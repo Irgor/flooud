@@ -1,0 +1,24 @@
+<h1>Uploaded files:</h1>
+
+
+@for (media of files(); track media.id) {
+    <div (click)="loadMedia(media)" style="cursor:  pointer; border: 1px solid red; margin: 24px 0;">
+        <p><strong>Name:</strong> {{media.originalName}}</p>
+        <p><strong>Type:</strong> {{media.mime}}</p>
+        <p><strong>Bytes:</strong> {{media.sizeBytes}}</p>
+    </div>
+}
+
+@if(selectedMedia(); as media) {
+    @if(fileType() == 'video'){
+        <div class="preview-box">
+            <fl-video-player [media]="media"/>
+        </div>
+    }
+    @if(fileType() == 'image'){
+        <div class="preview-box">
+            <img [src]="streamUrl()" alt="Selected Media" style="max-width: 600px; margin: 15px 0;"/>
+        </div>
+    }
+}
+

@@ -1,0 +1,23 @@
+<h1>Upload de video</h1>
+
+<div class="card flex flex-wrap gap-6 items-center justify-between">
+
+    <input #fu type="file" (change)="onFileSelected($event)">
+
+    @if (filePreview()) {
+        @if(fileType() == 'video'){
+            <div class="preview-box">
+                <!-- biome-ignore lint/a11y/useMediaCaption: <explanation no caption for media uploaded from user> -->
+                <video controls [src]="filePreview()" alt="Uploaded Preview" style="width: 600px; margin: 15px 0;"></video>
+            </div>
+        }
+        @if(fileType() == 'image'){
+            <div class="preview-box">
+                <img [src]="filePreview()" alt="Uploaded Preview" style="max-width: 300px; margin: 15px 0;"/>
+            </div>
+        }
+    }
+    <p-button (click)="uploadImage()">Upload Media</p-button>
+
+
+</div>

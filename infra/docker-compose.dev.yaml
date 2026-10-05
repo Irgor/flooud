@@ -1,0 +1,137 @@
+name: floud-dev
+
+services:
+  # web:
+  #   build:
+  #     context: ../apps/floud
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8080:80"
+  #   restart: always
+
+  api:
+    build:
+      context: ..
+      dockerfile: services/floud-api/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - S3_URL=http://garage:3900
+      - S3_PUBLIC_URL=http://localhost:3900
+      - S3_REGION=garage
+      - GARAGE_DEFAULT_ACCESS_KEY=GK${GARAGE_DEFAULT_ACCESS_KEY}
+      - GARAGE_DEFAULT_SECRET_KEY=${GARAGE_DEFAULT_SECRET_KEY}
+      - GARAGE_DEFAULT_BUCKET=floud
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ../services/floud-api:/app/services/floud-api
+      - ../packages/db:/app/packages/db
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      garage:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: services/worker/Dockerfile
+    environment:
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - S3_URL=http://garage:3900
+      - S3_REGION=garage
+      - GARAGE_DEFAULT_ACCESS_KEY=GK${GARAGE_DEFAULT_ACCESS_KEY}
+      - GARAGE_DEFAULT_SECRET_KEY=${GARAGE_DEFAULT_SECRET_KEY}
+      - GARAGE_DEFAULT_BUCKET=floud
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ../services/worker:/app/services/worker
+      - ../packages/db:/app/packages/db
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      garage:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  garage:
+    image: dxflrs/garage:v2.3.0
+    command:
+      [
+        "/garage",
+        "-c",
+        "/etc/garage/garage.toml",
+        "server",
+        "--single-node",
+        "--default-bucket",
+      ]
+    environment:
+      - GARAGE_DEFAULT_BUCKET=floud
+      - GARAGE_DEFAULT_ACCESS_KEY=GK${GARAGE_DEFAULT_ACCESS_KEY}
+      - GARAGE_DEFAULT_SECRET_KEY=${GARAGE_DEFAULT_SECRET_KEY}
+    ports: ["3900:3900"]
+    healthcheck:
+      test: ["CMD", "/garage", "-c", "/etc/garage/garage.toml", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - ./garage.toml:/etc/garage/garage.toml
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+
+  garage-webui:
+    image: khairul169/garage-webui:latest
+    container_name: garage-webui
+    restart: unless-stopped
+    ports:
+      - "3909:3909"
+    environment:
+      - API_BASE_URL=http://garage:3903
+      - S3_ENDPOINT_URL=http://garage:3900
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+    depends_on:
+      - garage
+
+volumes:
+  pgdata:
+  garage-meta:
+  garage-data:
+  redis_data:

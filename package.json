@@ -1,0 +1,13 @@
+{
+	"name": "floud",
+	"private": true,
+	"workspaces": [
+		"services/*",
+		"packages/*",
+		"apps/*"
+	],
+	"scripts": {
+		"compose": "cd infra; docker compose -f docker-compose.dev.yaml up -d",
+		"ui": "npm run start -w floud-ui"
+	}
+}
