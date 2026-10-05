@@ -1,18 +1,19 @@
 ---
-context: true
-priority: high
-scope: project
+paths:
+  - "apps/floud-ui/**"
 ---
 
-You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
+# Angular / TypeScript conventions (apps/floud-ui)
 
-## TypeScript Best Practices
+Use these as the review standard when guiding work on the UI.
+
+## TypeScript
 
 - Use strict type checking
 - Prefer type inference when the type is obvious
 - Avoid the `any` type; use `unknown` when type is uncertain
 
-## Angular Best Practices
+## Angular
 
 - Always use standalone components over NgModules
 - Must NOT set `standalone: true` inside Angular decorators. It's the default in Angular v20+.
@@ -22,12 +23,12 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use `NgOptimizedImage` for all static images.
   - `NgOptimizedImage` does not work for inline base64 images.
 
-## Accessibility Requirements
+## Accessibility
 
 - It MUST pass all AXE checks.
 - It MUST follow all WCAG AA minimums, including focus management, color contrast, and ARIA attributes.
 
-### Components
+## Components
 
 - Keep components small and focused on a single responsibility
 - Use `input()` and `output()` functions instead of decorators
@@ -39,7 +40,7 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Do NOT use `ngStyle`, use `style` bindings instead
 - When using external templates/styles, use paths relative to the component TS file.
 
-## State Management
+## State management
 
 - Use signals for local component state
 - Use `computed()` for derived state
