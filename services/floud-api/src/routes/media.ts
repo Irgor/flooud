@@ -1,235 +1,222 @@
-import { randomUUID } from "node:crypto";
-import { HeadObjectCommand } from "@aws-sdk/client-s3";
-import { Upload } from "@aws-sdk/lib-storage";
-import type { MultipartFile } from "@fastify/multipart";
-import { schema } from "@floud/db";
-import {
-	bucketName,
-	createGetCommand,
-	createPreSignedUrl,
-	TIME_IN_SECONDS,
-} from "@floud/s3";
-import { eq } from "drizzle-orm";
-import type { FastifyInstance } from "fastify";
+import { randomUUID } from 'node:crypto';
+import { HeadObjectCommand } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
+import type { MultipartFile } from '@fastify/multipart';
+import { schema } from '@floud/db';
+import { bucketName, createGetCommand, createPreSignedUrl, TIME_IN_SECONDS } from '@floud/s3';
+import { eq } from 'drizzle-orm';
+import type { FastifyInstance } from 'fastify';
 
 const qualities = [480, 720, 1080, 2160] as const;
 type Quality = (typeof qualities)[number];
 
-function getFieldValue(
-	data: MultipartFile,
-	fieldName: string,
-): string | undefined {
-	const field = data.fields[fieldName];
-	const singleField = Array.isArray(field) ? field[0] : field;
+function getFieldValue(data: MultipartFile, fieldName: string): string | undefined {
+  const field = data.fields[fieldName];
+  const singleField = Array.isArray(field) ? field[0] : field;
 
-	if (singleField && singleField.type === "field") {
-		return singleField.value as string;
-	}
-	return undefined;
+  if (singleField && singleField.type === 'field') {
+    return singleField.value as string;
+  }
+  return undefined;
 }
 
 const qualityHeaderConfig = {
-	480: {
-		bandwidth: "1628000",
-		average_bandwidth: "1528000",
-		resolution: "854x480",
-		codecs: "avc1.64001f,mp4a.40.2",
-	},
-	720: {
-		bandwidth: "3128000",
-		average_bandwidth: "2928000",
-		resolution: "1280x720",
-		codecs: "avc1.64001f,mp4a.40.2",
-	},
-	1080: {
-		bandwidth: "5542000",
-		average_bandwidth: "5192000",
-		resolution: "1920x1080",
-		codecs: "avc1.640028,mp4a.40.2",
-	},
-	2160: {
-		bandwidth: "15320000",
-		average_bandwidth: "14320000",
-		resolution: "3840x2160",
-		codecs: "avc1.640033,mp4a.40.2",
-	},
+  480: {
+    bandwidth: '1628000',
+    average_bandwidth: '1528000',
+    resolution: '854x480',
+    codecs: 'avc1.64001f,mp4a.40.2',
+  },
+  720: {
+    bandwidth: '3128000',
+    average_bandwidth: '2928000',
+    resolution: '1280x720',
+    codecs: 'avc1.64001f,mp4a.40.2',
+  },
+  1080: {
+    bandwidth: '5542000',
+    average_bandwidth: '5192000',
+    resolution: '1920x1080',
+    codecs: 'avc1.640028,mp4a.40.2',
+  },
+  2160: {
+    bandwidth: '15320000',
+    average_bandwidth: '14320000',
+    resolution: '3840x2160',
+    codecs: 'avc1.640033,mp4a.40.2',
+  },
 } as const;
 
 function segmentQualityHeader(quality: Quality) {
-	const config = qualityHeaderConfig[quality];
-	return `#EXT-X-STREAM-INF:BANDWIDTH=${config.bandwidth},AVERAGE-BANDWIDTH=${config.average_bandwidth},RESOLUTION=${config.resolution}`;
+  const config = qualityHeaderConfig[quality];
+  return `#EXT-X-STREAM-INF:BANDWIDTH=${config.bandwidth},AVERAGE-BANDWIDTH=${config.average_bandwidth},RESOLUTION=${config.resolution}`;
 }
 
 export default async function mediaRoutes(fastify: FastifyInstance) {
-	fastify.post("/media", async (request, reply) => {
-		const data = await request.file();
-		if (!data?.file) {
-			return { missing: "file" };
-		}
+  fastify.post('/media', async (request, reply) => {
+    const data = await request.file();
+    if (!data?.file) {
+      return { missing: 'file' };
+    }
 
-		const width = Number(getFieldValue(data, "width"));
-		const height = Number(getFieldValue(data, "height"));
-		const quality = Number(getFieldValue(data, "quality"));
+    const width = Number(getFieldValue(data, 'width'));
+    const height = Number(getFieldValue(data, 'height'));
+    const quality = Number(getFieldValue(data, 'quality'));
 
-		if (data.file.truncated) {
-			return reply.code(413).send({ error: "file too large" });
-		}
+    if (data.file.truncated) {
+      return reply.code(413).send({ error: 'file too large' });
+    }
 
-		const filename = `${randomUUID()}_${data.filename}`;
+    const filename = `${randomUUID()}_${data.filename}`;
 
-		const up = new Upload({
-			client: fastify.s3,
-			params: {
-				Bucket: bucketName,
-				Key: filename,
-				Body: data.file,
-				ContentType: data.mimetype,
-			},
-		});
-		await up.done();
+    const up = new Upload({
+      client: fastify.s3,
+      params: {
+        Bucket: bucketName,
+        Key: filename,
+        Body: data.file,
+        ContentType: data.mimetype,
+      },
+    });
+    await up.done();
 
-		const head = await fastify.s3.send(
-			new HeadObjectCommand({ Bucket: bucketName, Key: filename }),
-		);
+    const head = await fastify.s3.send(
+      new HeadObjectCommand({ Bucket: bucketName, Key: filename }),
+    );
 
-		const sizeBytes = head.ContentLength ?? 0;
+    const sizeBytes = head.ContentLength ?? 0;
 
-		const [row] = await fastify.db
-			.insert(schema.media)
-			.values({
-				storageKey: filename,
-				originalName: data.filename,
-				mime: data.mimetype,
-				sizeBytes: sizeBytes,
-				status: schema.mediaStatus.UPLOADING,
-				width,
-				height,
-				original_quality: quality,
-			})
-			.returning();
+    const [row] = await fastify.db
+      .insert(schema.media)
+      .values({
+        storageKey: filename,
+        originalName: data.filename,
+        mime: data.mimetype,
+        sizeBytes: sizeBytes,
+        status: schema.mediaStatus.UPLOADING,
+        width,
+        height,
+        original_quality: quality,
+      })
+      .returning();
 
-		if (!row) {
-			reply.code(500).send({ success: false, message: "unexpected error" });
-			return;
-		}
+    if (!row) {
+      reply.code(500).send({ success: false, message: 'unexpected error' });
+      return;
+    }
 
-		reply.code(202).send(row);
+    reply.code(202).send(row);
 
-		const possibleQualities = qualities.filter(
-			(possibleQuality) => possibleQuality <= quality,
-		);
+    const possibleQualities = qualities.filter((possibleQuality) => possibleQuality <= quality);
 
-		fastify.mediaQueue.add(
-			`transcode-${row.id}`,
-			{
-				mediaId: row.id,
-				qualities: possibleQualities,
-			},
-			{
-				attempts: 3,
-				backoff: 5000,
-				removeOnComplete: true,
-			},
-		);
+    fastify.mediaQueue.add(
+      `transcode-${row.id}`,
+      {
+        mediaId: row.id,
+        qualities: possibleQualities,
+      },
+      {
+        attempts: 3,
+        backoff: 5000,
+        removeOnComplete: true,
+      },
+    );
 
-		return;
-	});
+    return;
+  });
 
-	fastify.get("/media", async () => {
-		const query = fastify.db.select().from(schema.media);
+  fastify.get('/media', async () => {
+    const query = fastify.db.select().from(schema.media);
 
-		const media = await query;
-		return media;
-	});
+    const media = await query;
+    return media;
+  });
 
-	fastify.get("/media/:id", async (request, reply) => {
-		const { id } = request.params as { id: string };
+  fastify.get('/media/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
 
-		const media = await fastify.db
-			.select()
-			.from(schema.media)
-			.where(eq(schema.media.id, id));
+    const media = await fastify.db.select().from(schema.media).where(eq(schema.media.id, id));
 
-		if (!media[0]) {
-			reply.code(404).send({ error: "media id not found" });
-		}
+    if (!media[0]) {
+      reply.code(404).send({ error: 'media id not found' });
+    }
 
-		return media[0];
-	});
+    return media[0];
+  });
 
-	fastify.get("/stream/:key/:quality/:head", async (request, reply) => {
-		const { key, quality, head } = request.params as {
-			key: string;
-			quality: string;
-			head: string;
-		};
+  fastify.get('/stream/:key/:quality/:head', async (request, reply) => {
+    const { key, quality, head } = request.params as {
+      key: string;
+      quality: string;
+      head: string;
+    };
 
-		const basePath = `playlist/${key}/${quality}`;
-		const playlistPath = `${basePath}/${head}`;
+    const basePath = `playlist/${key}/${quality}`;
+    const playlistPath = `${basePath}/${head}`;
 
-		const getCommand = createGetCommand(playlistPath);
-		const response = await fastify.s3.send(getCommand);
-		if (!response.Body) {
-			reply.code(404).send({ error: "file not found" });
-			return;
-		}
+    const getCommand = createGetCommand(playlistPath);
+    const response = await fastify.s3.send(getCommand);
+    if (!response.Body) {
+      reply.code(404).send({ error: 'file not found' });
+      return;
+    }
 
-		const rawOutput = await response.Body.transformToString();
-		const lines = rawOutput.split(`\n`);
-		const linesWithPreSignedSegments = await Promise.all(
-			lines.map(async (line) => {
-				line = line.trim();
+    const rawOutput = await response.Body.transformToString();
+    const lines = rawOutput.split(`\n`);
+    const linesWithPreSignedSegments = await Promise.all(
+      lines.map(async (line) => {
+        line = line.trim();
 
-				if (!line || line.length === 0 || line.startsWith("#")) {
-					return line;
-				}
+        if (!line || line.length === 0 || line.startsWith('#')) {
+          return line;
+        }
 
-				const segmentKey = `${basePath}/${line}`;
-				const getSegementComand = createGetCommand(segmentKey);
-				const preSignedSegementUrl = createPreSignedUrl(
-					fastify.publicS3,
-					getSegementComand,
-					TIME_IN_SECONDS.HOUR * 2,
-				);
+        const segmentKey = `${basePath}/${line}`;
+        const getSegementComand = createGetCommand(segmentKey);
+        const preSignedSegementUrl = createPreSignedUrl(
+          fastify.publicS3,
+          getSegementComand,
+          TIME_IN_SECONDS.HOUR * 2,
+        );
 
-				return preSignedSegementUrl;
-			}),
-		);
+        return preSignedSegementUrl;
+      }),
+    );
 
-		reply.type("application/x-mpegURL");
+    reply.type('application/x-mpegURL');
 
-		return linesWithPreSignedSegments.join(`\n`);
-	});
+    return linesWithPreSignedSegments.join(`\n`);
+  });
 
-	fastify.get("/stream/:key/master.m3u8", async (request, reply) => {
-		const { key } = request.params as { key: string };
+  fastify.get('/stream/:key/master.m3u8', async (request, reply) => {
+    const { key } = request.params as { key: string };
 
-		const medias = await fastify.db
-			.select()
-			.from(schema.media)
-			.where(eq(schema.media.storageKey, key));
+    const medias = await fastify.db
+      .select()
+      .from(schema.media)
+      .where(eq(schema.media.storageKey, key));
 
-		const media = medias[0];
-		if (!media) {
-			reply.code(404).send({ error: "media key not found" });
-			return;
-		}
+    const media = medias[0];
+    if (!media) {
+      reply.code(404).send({ error: 'media key not found' });
+      return;
+    }
 
-		const output = [];
+    const output = [];
 
-		output.push(`#EXTM3U`);
-		output.push(`#EXT-X-VERSION:3`);
-		output.push(`#EXT-X-INDEPENDENT-SEGMENTS`);
-		qualities
-			.filter((quality) => quality <= media.original_quality)
-			.forEach((quality) => {
-				const segmentHeader = segmentQualityHeader(quality);
-				output.push(segmentHeader);
-				output.push(`${quality}p/${quality}p.m3u8`);
-			});
+    output.push(`#EXTM3U`);
+    output.push(`#EXT-X-VERSION:3`);
+    output.push(`#EXT-X-INDEPENDENT-SEGMENTS`);
+    qualities
+      .filter((quality) => quality <= media.original_quality)
+      .forEach((quality) => {
+        const segmentHeader = segmentQualityHeader(quality);
+        output.push(segmentHeader);
+        output.push(`${quality}p/${quality}p.m3u8`);
+      });
 
-		reply.type("application/x-mpegURL");
+    reply.type('application/x-mpegURL');
 
-		return output.join(`\n`);
-	});
+    return output.join(`\n`);
+  });
 }

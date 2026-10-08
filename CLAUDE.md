@@ -46,7 +46,8 @@ npm workspaces monorepo (`services/*`, `packages/*`, `apps/*`). Node ≥ 22.18, 
 
 - `npm run compose` — bring up the dev stack (api + worker run in containers with source mounted, `node --watch`).
 - `npm run ui` — Angular dev server on :4200.
-- `npm run typecheck -w floud-api`, `npm run lint -w floud-api` (`lint:fix` to write).
+- `npm run lint` / `npm run lint:fix` — Biome from the repo root; one `biome.json` covers `services/**` and `packages/**` (the UI is excluded).
+- `npm run typecheck -w floud-api`.
 - `npm test -w floud-ui` — Vitest via `ng test`.
 - `npm run db:push -w @floud/db` — run on the host; needs `FLOUD_DATABASE_URL` pointing at `localhost:5432`.
 
@@ -60,5 +61,5 @@ npm workspaces monorepo (`services/*`, `packages/*`, `apps/*`). Node ≥ 22.18, 
 
 ## Style
 
-- Tabs, double quotes (Biome in the API, Prettier in the UI).
+- 2 spaces, single quotes, width 100 (root `biome.json` for services and packages, mirroring the UI's `.prettierrc`).
 - Commits: only when asked.
