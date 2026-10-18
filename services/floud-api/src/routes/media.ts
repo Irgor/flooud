@@ -96,10 +96,20 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/media', async () => {
-    const query = fastify.db.select().from(schema.media);
+    const medias = await fastify.db.query.media.findMany({
+      with: {
+        renditions: true,
+      },
+    });
 
-    const media = await query;
-    return media;
+    const playable = (renditions: schema.Rendition[]): boolean => {
+      return renditions.some(
+        (rendition) => rendition.renditionStatus === schema.renditionsStatus.READY,
+      );
+    };
+    const response = medias.map((media) => ({ ...media, playable: playable(media.renditions) }));
+
+    return response;
   });
 
   fastify.get('/media/:id', async (request, reply) => {
@@ -118,40 +128,37 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
   fastify.get('/stream/:key/master.m3u8', async (request, reply) => {
     const { key } = request.params as { key: string };
 
-    const medias = await fastify.db
-      .select()
-      .from(schema.media)
-      .where(eq(schema.media.storageKey, key));
+    const media = await fastify.db.query.media.findFirst({
+      where: eq(schema.media.storageKey, key),
+      with: {
+        renditions: true,
+      },
+    });
 
-    const media = medias[0];
     if (!media) {
       reply.code(404).send({ error: 'media key not found' });
       return;
     }
 
-    if (media.status !== 'ready') {
-      reply.code(400).send({ error: 'media is not ready to play' });
-      return;
-    }
+    const mediaAvilableQualities = media.renditions
+      .filter((rendition) => rendition.renditionStatus === schema.renditionsStatus.READY)
+      .map((rendition) => rendition.quality as Quality);
 
-    const originalQuality = media.originalQuality;
-    if (!originalQuality) {
-      reply.code(400).send({ error: 'media is corupted' });
+    if (!mediaAvilableQualities.length) {
+      reply.code(400).send({ error: 'media not playable yet' });
       return;
     }
 
     const output = [];
-
     output.push(`#EXTM3U`);
     output.push(`#EXT-X-VERSION:3`);
     output.push(`#EXT-X-INDEPENDENT-SEGMENTS`);
-    qualities
-      .filter((quality) => quality <= originalQuality)
-      .forEach((quality) => {
-        const segmentHeader = segmentQualityHeader(quality);
-        output.push(segmentHeader);
-        output.push(`${quality}p/${quality}p.m3u8`);
-      });
+
+    mediaAvilableQualities.forEach((quality) => {
+      const segmentHeader = segmentQualityHeader(quality);
+      output.push(segmentHeader);
+      output.push(`${quality}p/${quality}p.m3u8`);
+    });
 
     reply.type('application/x-mpegURL');
 

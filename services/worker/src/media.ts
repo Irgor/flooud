@@ -159,9 +159,12 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
 
     // get media details from datbase
     console.log(`[DB] start media query on ${job.data.mediaId}`);
-    const media = (
-      await db.select().from(schema.media).where(eq(schema.media.id, job.data.mediaId))
-    )?.[0];
+    const media = await db.query.media.findFirst({
+      where: eq(schema.media.id, job.data.mediaId),
+      with: {
+        renditions: true,
+      },
+    });
 
     if (!media) {
       throw new Error('media not found');
@@ -192,19 +195,34 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
     await pipeline(s3Stream, fileStream);
     console.log(`[INFO] file wrote locally success`);
 
-    const metadata = await probeVideo(inputPath).catch((err) => {
-      console.error('[ERROR]', err);
-      throw new Error('video probe failed');
-    });
+    let metadata: Metadata;
+    let originalQuality: Quality | null = null;
+    if (!media.originalQuality) {
+      metadata = await probeVideo(inputPath).catch((err) => {
+        console.error('[ERROR]', err);
+        throw new Error('video probe failed');
+      });
 
-    console.log({ metadata });
+      await db
+        .update(schema.media)
+        .set({
+          ...metadata,
+        })
+        .where(eq(schema.media.id, job.data.mediaId))
+        .catch((e) => {
+          console.error(e);
+          throw new Error('failed to update video details');
+        });
+      originalQuality = metadata.originalQuality;
+    } else {
+      originalQuality = media.originalQuality as Quality;
+    }
 
     // update media status to PROCESSING
     await db
       .update(schema.media)
       .set({
         status: schema.mediaStatus.PROCESSING,
-        ...metadata,
       })
       .where(eq(schema.media.id, job.data.mediaId))
       .catch((e) => {
@@ -212,21 +230,47 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
         throw new Error('failed to update video details');
       });
 
-    const videoQualities = qualities.filter((quality) => quality <= metadata.originalQuality);
+    const videoQualities = qualities.filter((quality) => quality <= originalQuality);
 
+    const createdRenditions = await db
+      .insert(schema.renditions)
+      .values(videoQualities.map((quality) => ({ mediaId: media.id, quality })))
+      .onConflictDoNothing({ target: [schema.renditions.mediaId, schema.renditions.quality] })
+      .returning({
+        id: schema.renditions.id,
+        quality: schema.renditions.quality,
+        renditionStatus: schema.renditions.renditionStatus,
+      });
+
+    const renditions = media.renditions.length ? media.renditions : createdRenditions;
+
+    const missingVideoQualities = renditions.filter(
+      (rendition) =>
+        rendition.renditionStatus === schema.renditionsStatus.PROCESSING ||
+        rendition.renditionStatus === schema.renditionsStatus.PENDING ||
+        rendition.renditionStatus === schema.renditionsStatus.FAILED,
+    );
+
+    let anyFailed = false;
     // split file into 6 secs segement playlist and save into output dir
-    for (const quality of videoQualities) {
+    for (const rendition of missingVideoQualities) {
+      let failed = false;
+      const quality = rendition.quality as Quality;
+
       const config = HLS_QUALITY_PRESETS[quality];
 
       const currOutputDir = createOutputDir(baseDir, quality);
       await ensureDir(currOutputDir);
 
+      await updateRenditionStatus(db, schema.renditionsStatus.PROCESSING, rendition.id);
       await new Promise((resolve, reject) => {
         ffmpeg(inputPath)
-          .on('start', () => console.log(`[FFMPEG] Start FFMPED transcode of ${quality}p`))
-          .on('progress', (progress) =>
-            console.log(`[FFMPEG] Processing: ${progress?.percent?.toFixed(2) ?? 0}% done`),
-          )
+          .on('start', () => {
+            console.log(`[FFMPEG] Start FFMPED transcode of ${quality}p`);
+          })
+          .on('progress', (progress) => {
+            console.log(`[FFMPEG] Processing: ${progress?.percent?.toFixed(2) ?? 0}% done`);
+          })
           .on('end', resolve)
           .on('error', reject)
           .videoCodec('libx264')
@@ -254,12 +298,14 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
           .run();
       }).catch(async () => {
         console.log('[ERROR] FFMPEG Failed processging video');
-        await db
-          .update(schema.media)
-          .set({ status: schema.mediaStatus.FAILED })
-          .where(eq(schema.media.id, job.data.mediaId));
-        throw new Error('video encode failed');
+        await updateRenditionStatus(db, schema.renditionsStatus.FAILED, rendition.id);
+        failed = true;
+        anyFailed = true;
       });
+
+      if (failed) {
+        continue;
+      }
 
       // list all generated files from quality
       const files = await readdir(currOutputDir);
@@ -292,17 +338,32 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
 
         console.log(`[UPLOAD]: ${s3Key}`);
       }
+
+      await updateRenditionStatus(db, schema.renditionsStatus.READY, rendition.id);
+    }
+
+    if (anyFailed) {
+      throw new Error('one or multiple renditions failed transocde');
     }
 
     await db
       .update(schema.media)
       .set({ status: schema.mediaStatus.READY })
-      .where(eq(schema.media.id, job.data.mediaId));
+      .where(eq(schema.media.id, media.id));
   } finally {
     await cleanUp(baseDir);
   }
 
   return { success: true };
 };
+
+async function updateRenditionStatus(db: Db, status: schema.RenditionStatus, qualityId: string) {
+  await db
+    .update(schema.renditions)
+    .set({
+      renditionStatus: status,
+    })
+    .where(eq(schema.renditions.id, qualityId));
+}
 
 export { type MediaJobData, processMedia };
