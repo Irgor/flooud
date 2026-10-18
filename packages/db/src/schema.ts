@@ -1,4 +1,13 @@
-import { bigint, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  doublePrecision,
+} from 'drizzle-orm/pg-core';
 
 export const pgEnumMediaStatus = pgEnum('media_status', [
   'uploading',
@@ -17,10 +26,15 @@ export const media = pgTable('medias', {
   storageKey: text('storage_key').notNull(),
   originalName: text('original_name').notNull(),
   mime: text('mime').notNull(),
-  width: integer('width'),
-  height: integer('height'),
-  original_quality: integer('original_quality').notNull(),
-  sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
+  width: text('width'),
+  height: text('height'),
+  resolution: text('resolution'),
+  codec: text('codec'),
+  colorFormat: text('color_format'),
+  bitrateMbps: doublePrecision('bitrate_mbps'),
+  aspectRatio: text('aspect_ratio'),
+  originalQuality: integer('original_quality'),
+  sizeBytes: bigint('size_bytes', { mode: 'number' }),
   status: pgEnumMediaStatus('status').notNull().default('uploading'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });

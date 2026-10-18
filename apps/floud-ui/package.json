@@ -5,6 +5,7 @@
 		"ng": "ng",
 		"start": "ng serve",
 		"build": "ng build",
+    "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
 		"watch": "ng build --watch --configuration development",
 		"test": "ng test"
 	},

@@ -10,11 +10,23 @@ import type { Job } from 'bullmq';
 import { eq } from 'drizzle-orm';
 import ffmpeg from 'fluent-ffmpeg';
 
-type Quality = 480 | 720 | 1080 | 2160;
+const qualities = [480, 720, 1080, 2160] as const;
+type Quality = (typeof qualities)[number];
 interface MediaJobData {
   mediaId: string;
-  qualities: Quality[];
 }
+
+export type Metadata = {
+  resolution: string;
+  codec: string;
+  colorFormat: string;
+  bitrateMbps: number;
+  height: string;
+  width: string;
+  sizeBytes: number;
+  aspectRatio: string;
+  originalQuality: Quality;
+};
 
 export type hslPreset = {
   resolution: string;
@@ -76,10 +88,70 @@ async function cleanUp(baseDir: string) {
   await rm(baseDir, { force: true, recursive: true });
 }
 
+function mapToQualityEnum(height: number, width: number): Quality {
+  const min = Math.min(height, width);
+  const possibilities = qualities.filter((quality) => quality <= min);
+  if (!possibilities.length) {
+    return Math.min(...qualities) as Quality;
+  }
+
+  return Math.max(...possibilities) as Quality;
+}
+
+function calculateAspectRatio(width: number, height: number): string {
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  const divisor = gcd(width, height);
+  return `${width / divisor}:${height / divisor}`;
+}
+
+function probeVideo(filePath: string): Promise<Metadata> {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) {
+        return reject({ success: false, error: err.message });
+      }
+
+      const videoStream = metadata.streams.find((s) => s.codec_type === 'video');
+
+      if (!videoStream) {
+        return reject({ success: false, error: 'video stream not loaded' });
+      }
+
+      const width = videoStream.width;
+      const height = videoStream.height;
+
+      if (!height || !width) {
+        return reject({ success: false, error: 'video metadata not loaded' });
+      }
+
+      const originalQuality: Quality = mapToQualityEnum(height, width);
+
+      const sizeBytes = metadata.format.size || 0;
+      const bitRateInBits = metadata.format.bit_rate || 0;
+
+      const aspectRatio =
+        videoStream.display_aspect_ratio && videoStream.display_aspect_ratio !== '0:1'
+          ? videoStream.display_aspect_ratio
+          : calculateAspectRatio(width, height);
+
+      resolve({
+        sizeBytes,
+        originalQuality,
+        aspectRatio,
+        codec: videoStream?.codec_name || 'unknown',
+        resolution: videoStream ? `${videoStream.width}x${videoStream.height}` : 'unknown',
+        height: videoStream ? `${videoStream.height}` : 'unknown',
+        width: videoStream ? `${videoStream.width}` : 'unknown',
+        colorFormat: videoStream?.pix_fmt || 'unknown',
+        bitrateMbps: parseFloat((bitRateInBits / 1_000_000).toFixed(2)),
+      });
+    });
+  });
+}
+
 const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) => {
   const baseDir = `/tmp/media-${job.data.mediaId}`;
   await ensureDir(baseDir);
-  const qualitiesDir: Map<Quality, string> = new Map();
   let inputPath = '';
 
   try {
@@ -92,10 +164,6 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
     )?.[0];
 
     if (!media) {
-      await db
-        .update(schema.media)
-        .set({ status: schema.mediaStatus.FAILED })
-        .where(eq(schema.media.id, job.data.mediaId));
       throw new Error('media not found');
     }
     console.log(`[DB] media data retrivied ${media.originalName}`);
@@ -124,23 +192,38 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
     await pipeline(s3Stream, fileStream);
     console.log(`[INFO] file wrote locally success`);
 
+    const metadata = await probeVideo(inputPath).catch((err) => {
+      console.error('[ERROR]', err);
+      throw new Error('video probe failed');
+    });
+
+    console.log({ metadata });
+
     // update media status to PROCESSING
     await db
       .update(schema.media)
-      .set({ status: schema.mediaStatus.PROCESSING })
-      .where(eq(schema.media.id, job.data.mediaId));
+      .set({
+        status: schema.mediaStatus.PROCESSING,
+        ...metadata,
+      })
+      .where(eq(schema.media.id, job.data.mediaId))
+      .catch((e) => {
+        console.error(e);
+        throw new Error('failed to update video details');
+      });
+
+    const videoQualities = qualities.filter((quality) => quality <= metadata.originalQuality);
 
     // split file into 6 secs segement playlist and save into output dir
-    for (const quality of job.data.qualities) {
+    for (const quality of videoQualities) {
       const config = HLS_QUALITY_PRESETS[quality];
 
       const currOutputDir = createOutputDir(baseDir, quality);
       await ensureDir(currOutputDir);
-      qualitiesDir.set(quality, currOutputDir);
 
       await new Promise((resolve, reject) => {
         ffmpeg(inputPath)
-          .on('start', () => console.log(`[FFMPEG] Start FFMPED transcode`))
+          .on('start', () => console.log(`[FFMPEG] Start FFMPED transcode of ${quality}p`))
           .on('progress', (progress) =>
             console.log(`[FFMPEG] Processing: ${progress?.percent?.toFixed(2) ?? 0}% done`),
           )
@@ -177,15 +260,12 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
           .where(eq(schema.media.id, job.data.mediaId));
         throw new Error('video encode failed');
       });
-    }
 
-    for (const quality of job.data.qualities) {
-      const qualityOutputDir = qualitiesDir.get(quality) ?? '';
       // list all generated files from quality
-      const files = await readdir(qualityOutputDir);
+      const files = await readdir(currOutputDir);
 
       for (const file of files) {
-        const localFilePath = path.join(qualityOutputDir, file);
+        const localFilePath = path.join(currOutputDir, file);
 
         const targetFolder = createTargetFolder(media.storageKey, quality);
         const s3Key = path.join(targetFolder, file).replace(/\\/g, '/');
