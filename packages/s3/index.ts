@@ -1,4 +1,5 @@
 import {
+  attachment,
   bucketName,
   createGetCommand,
   createPreSignedUrl,
@@ -9,6 +10,7 @@ import {
 } from './s3.ts';
 
 export {
+  attachment,
   bucketName,
   createGetCommand,
   createPreSignedUrl,

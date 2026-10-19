@@ -1,7 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Upload } from '@aws-sdk/lib-storage';
 import { schema } from '@floud/db';
-import { bucketName, createGetCommand, createPreSignedUrl, TIME_IN_SECONDS } from '@floud/s3';
+import {
+  attachment,
+  bucketName,
+  createGetCommand,
+  createPreSignedUrl,
+  TIME_IN_SECONDS,
+} from '@floud/s3';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 
@@ -64,13 +70,17 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
     });
     await up.done();
 
+    const status = data.mimetype.startsWith('video/')
+      ? schema.mediaStatus.UPLOADING
+      : schema.mediaStatus.READY;
+
     const [row] = await fastify.db
       .insert(schema.media)
       .values({
         storageKey: filename,
         originalName: data.filename,
         mime: data.mimetype,
-        status: schema.mediaStatus.UPLOADING,
+        status,
       })
       .returning();
 
@@ -79,19 +89,24 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    await fastify.mediaQueue.add(
-      `transcode-${row.id}`,
-      {
-        mediaId: row.id,
-      },
-      {
-        attempts: 3,
-        backoff: 5000,
-        removeOnComplete: true,
-      },
-    );
+    if (data.mimetype.startsWith('video/')) {
+      await fastify.mediaQueue.add(
+        `transcode-${row.id}`,
+        {
+          mediaId: row.id,
+        },
+        {
+          attempts: 3,
+          backoff: 5000,
+          removeOnComplete: true,
+        },
+      );
 
-    reply.code(202).send(row);
+      reply.code(202).send(row);
+      return;
+    }
+
+    reply.code(200).send(row);
     return;
   });
 
@@ -123,6 +138,26 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
     }
 
     return media[0];
+  });
+
+  fastify.get('/view/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const media = await fastify.db.query.media.findFirst({
+      where: eq(schema.media.id, id),
+    });
+
+    if (!media) {
+      reply.code(404).send({ error: 'media not found' });
+      return;
+    }
+
+    const command = await createGetCommand(media.storageKey, {
+      ResponseContentDisposition: attachment(media.originalName),
+    });
+
+    const url = await createPreSignedUrl(fastify.publicS3, command, TIME_IN_SECONDS.HOUR);
+    return reply.redirect(url);
   });
 
   fastify.get('/stream/:key/master.m3u8', async (request, reply) => {

@@ -29,10 +29,13 @@ const createS3 = (isPublic = false) => {
 
 const bucketName = process.env.GARAGE_DEFAULT_BUCKET!;
 
-const createGetCommand = (key: string): GetObjectCommand => {
+const attachment = (name: string) => `attachment; filename="${name}"`;
+
+const createGetCommand = (key: string, extras = {}): GetObjectCommand => {
   const command = new GetObjectCommand({
     Bucket: bucketName,
     Key: key,
+    ...extras,
   });
 
   return command;
@@ -49,6 +52,7 @@ const createPreSignedUrl = (
 };
 
 export {
+  attachment,
   bucketName,
   createGetCommand,
   createPreSignedUrl,

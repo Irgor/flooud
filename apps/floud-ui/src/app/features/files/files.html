@@ -9,6 +9,7 @@
 }
 
 @if (selectedMedia(); as media) {
+  type: {{fileType()}}
   @if (fileType() == 'video') {
     <div class="preview-box">
       <fl-video-player [media]="media" />
@@ -16,7 +17,13 @@
   }
   @if (fileType() == 'image') {
     <div class="preview-box">
-      <img [src]="streamUrl()" alt="Selected Media" style="max-width: 600px; margin: 15px 0" />
+      <img [src]="mediaUrl()" alt="Selected Media" style="max-width: 600px; margin: 15px 0" />
+    </div>
+  }
+
+  @if (fileType() == 'file') {
+    <div class="preview-box">
+      <a [href]="mediaUrl()" target="_blank" [download]="selectedMedia()?.originalName">Download</a>
     </div>
   }
 }

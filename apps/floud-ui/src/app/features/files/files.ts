@@ -13,11 +13,26 @@ export class Files implements OnInit {
   private fileService = inject(FilesService);
 
   files = signal<Media[]>([]);
-  fileType = signal<'image' | 'video' | null>(null);
+
   selectedMedia = signal<Media | null>(null);
-  streamUrl = computed(() => {
-    return `http://localhost:3000/stream/${this.selectedMedia()?.storageKey}`;
+  mediaUrl = computed(() => {
+    return `http://localhost:3000/view/${this.selectedMedia()?.id}`;
   });
+  fileType = computed(() => {
+    const mime = this.selectedMedia()?.mime;
+    const types = ['image', 'video'];
+    if(!mime) {
+      return null;
+    }
+
+    for(const type of types) {
+      if(mime.includes(type)){
+        return type;
+      }
+    }
+
+    return 'file';
+  })
 
   ngOnInit(): void {
     this.fileService.getFiles().subscribe((res) => {
@@ -26,8 +41,6 @@ export class Files implements OnInit {
   }
 
   loadMedia(media: Media): void {
-    const type = media.mime.includes('image') ? 'image' : 'video';
-    this.fileType.set(type);
     this.selectedMedia.set(media);
   }
 }
