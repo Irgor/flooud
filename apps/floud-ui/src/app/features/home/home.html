@@ -1,7 +1,19 @@
-<h1>Upload de video</h1>
+<h1 class="text-3xl font-bold underline text-ink m-4">Upload de video</h1>
 
-<div class="card flex flex-wrap gap-6 items-center justify-between">
-  <input #fu type="file" (change)="onFileSelected($event)" />
+<div class="m-4 flex flex-col max-w-lg">
+  <label for="file" class="text-sm text-ink">Upload your file: </label>
+  <input
+    id="file"
+    #fu
+    type="file"
+    (change)="onFileSelected($event)"
+    aria-describedby="file-error"
+    [attr.aria-invalid]="fileInvalid()"
+    class="text-ink rounded-control border border-ink0muted px-3 py-2 focus-visible:outline-2 focus-visible:outline-primary aria-invalid:border-danger"
+  />
+  @if (fileInvalid()) {
+    <p id="file-error" class="text-sm text-danger">Selected file is invalid</p>
+  }
 
   @if (filePreview()) {
     @if (fileType() == 'video') {
@@ -25,5 +37,12 @@
       </div>
     }
   }
-  <button (click)="uploadImage()">Upload Media</button>
+
+  <button
+    (click)="uploadImage()"
+    [disabled]="uploadDisabled()"
+    class="my-4 w-3xs rounded-control bg-primary px-4 py-2 text-ink cursor-pointer hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
+  >
+    Upload Media
+  </button>
 </div>

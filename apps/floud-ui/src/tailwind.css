@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+/* pallet #272a29 | #f6f4f4 | #4769ff| #0dfdc9 | #33f5ff */
+@theme {
+  --color-primary: #33F5FF;
+  --color-primary-hover: #00E2FF;
+  --color-secondary: #4769FF;
+  --color-surface: #f6f4f4;
+  --color-ink: #272a29;
+  --color-ink-muted: #454A48; 
+  --color-danger: #dc2626;
+  --radius-control: 0.6rem;
+}
