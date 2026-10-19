@@ -1,3 +1,5 @@
+import { mediaStatus, renditionStatus } from '@floud/types';
+
 import { relations } from 'drizzle-orm';
 import {
   bigint,
@@ -11,17 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-export const pgEnumMediaStatus = pgEnum('media_status', [
-  'uploading',
-  'processing',
-  'ready',
-  'failed',
-]);
-
-export type MediaStatus = (typeof pgEnumMediaStatus.enumValues)[number];
-export const mediaStatus = Object.fromEntries(
-  pgEnumMediaStatus.enumValues.map((value) => [value.toUpperCase(), value]),
-) as { [V in MediaStatus as Uppercase<V>]: V };
+export const pgEnumMediaStatus = pgEnum('media_status', mediaStatus);
 
 export const media = pgTable('medias', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -44,11 +36,7 @@ export const media = pgTable('medias', {
 export type Media = typeof media.$inferSelect;
 export type NewMedia = typeof media.$inferInsert;
 
-export const pgEnumRenditionStatus = pgEnum('status', ['pending', 'processing', 'ready', 'failed']);
-export type RenditionStatus = (typeof pgEnumRenditionStatus.enumValues)[number];
-export const renditionsStatus = Object.fromEntries(
-  pgEnumRenditionStatus.enumValues.map((value) => [value.toUpperCase(), value]),
-) as { [V in RenditionStatus as Uppercase<V>]: V };
+export const pgEnumRenditionStatus = pgEnum('status', renditionStatus);
 
 export const renditions = pgTable(
   'renditions',

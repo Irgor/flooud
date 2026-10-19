@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import type { Media } from '../../shared/types/Media';
+import type {Media} from '@floud/types';
 
 export type Metadata = {
   width: number;

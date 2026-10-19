@@ -28,6 +28,8 @@ services:
     volumes:
       - ../services/floud-api:/app/services/floud-api
       - ../packages/db:/app/packages/db
+      - ../packages/s3:/app/packages/s3
+      - ../packages/types:/app/packages/types
       - /app/node_modules
     depends_on:
       db:
@@ -52,6 +54,8 @@ services:
     volumes:
       - ../services/worker:/app/services/worker
       - ../packages/db:/app/packages/db
+      - ../packages/s3:/app/packages/s3
+      - ../packages/types:/app/packages/types
       - /app/node_modules
     depends_on:
       db:

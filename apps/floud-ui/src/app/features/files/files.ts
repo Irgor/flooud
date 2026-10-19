@@ -1,7 +1,7 @@
 import { Component, computed, inject, type OnInit, signal } from '@angular/core';
 import { FilesService } from '../../core/services/files.service';
 import { VideoPlayer } from '../../shared/components/video-player/video-player';
-import type { Media } from '../../shared/types/Media';
+import type { Media } from '@floud/types';
 
 @Component({
   selector: 'app-files',

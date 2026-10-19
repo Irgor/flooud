@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import Hls from 'hls.js';
 import { FilesService } from '../../../core/services/files.service';
-import type { Media } from '../../types/Media';
+import type { Media } from '@floud/types';
 
 @Component({
   selector: 'fl-video-player',

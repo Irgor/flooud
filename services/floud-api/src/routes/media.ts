@@ -8,42 +8,14 @@ import {
   createPreSignedUrl,
   TIME_IN_SECONDS,
 } from '@floud/s3';
+import { HLS_QUALITY_PRESETS, mediaStatus, type Quality, renditionStatus } from '@floud/types';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 
-const qualities = [480, 720, 1080, 2160] as const;
-type Quality = (typeof qualities)[number];
-
-const qualityHeaderConfig = {
-  480: {
-    bandwidth: '1628000',
-    average_bandwidth: '1528000',
-    resolution: '854x480',
-    codecs: 'avc1.64001f,mp4a.40.2',
-  },
-  720: {
-    bandwidth: '3128000',
-    average_bandwidth: '2928000',
-    resolution: '1280x720',
-    codecs: 'avc1.64001f,mp4a.40.2',
-  },
-  1080: {
-    bandwidth: '5542000',
-    average_bandwidth: '5192000',
-    resolution: '1920x1080',
-    codecs: 'avc1.640028,mp4a.40.2',
-  },
-  2160: {
-    bandwidth: '15320000',
-    average_bandwidth: '14320000',
-    resolution: '3840x2160',
-    codecs: 'avc1.640033,mp4a.40.2',
-  },
-} as const;
-
 function segmentQualityHeader(quality: Quality) {
-  const config = qualityHeaderConfig[quality];
-  return `#EXT-X-STREAM-INF:BANDWIDTH=${config.bandwidth},AVERAGE-BANDWIDTH=${config.average_bandwidth},RESOLUTION=${config.resolution}`;
+  const config = HLS_QUALITY_PRESETS[quality];
+  const bandwidth = (config.maxBitrate + config.audioBitrate) * 1000;
+  return `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${config.resolution}`;
 }
 
 export default async function mediaRoutes(fastify: FastifyInstance) {
@@ -70,9 +42,7 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
     });
     await up.done();
 
-    const status = data.mimetype.startsWith('video/')
-      ? schema.mediaStatus.UPLOADING
-      : schema.mediaStatus.READY;
+    const status = data.mimetype.startsWith('video/') ? mediaStatus.UPLOADING : mediaStatus.READY;
 
     const [row] = await fastify.db
       .insert(schema.media)
@@ -118,9 +88,7 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
     });
 
     const playable = (renditions: schema.Rendition[]): boolean => {
-      return renditions.some(
-        (rendition) => rendition.renditionStatus === schema.renditionsStatus.READY,
-      );
+      return renditions.some((rendition) => rendition.renditionStatus === renditionStatus.READY);
     };
     const response = medias.map((media) => ({ ...media, playable: playable(media.renditions) }));
 
@@ -176,7 +144,7 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
     }
 
     const mediaAvilableQualities = media.renditions
-      .filter((rendition) => rendition.renditionStatus === schema.renditionsStatus.READY)
+      .filter((rendition) => rendition.renditionStatus === renditionStatus.READY)
       .map((rendition) => rendition.quality as Quality);
 
     if (!mediaAvilableQualities.length) {

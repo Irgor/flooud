@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@floud/db": "*",
+    "@floud/types": "*",
     "axios": "^1.20.0",
     "bullmq": "^6.3.8",
     "fluent-ffmpeg": "^2.1.3",

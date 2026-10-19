@@ -6,68 +6,22 @@ import { pipeline } from 'node:stream/promises';
 import { type Db, schema } from '@floud/db';
 import type { S3Client } from '@floud/s3';
 import { bucketName, createGetCommand, PutObjectCommand } from '@floud/s3';
+import {
+  HLS_QUALITY_PRESETS,
+  type Metadata,
+  mediaStatus,
+  type Quality,
+  qualities,
+  type RenditionStatus,
+  renditionStatus,
+} from '@floud/types';
 import type { Job } from 'bullmq';
 import { eq } from 'drizzle-orm';
 import ffmpeg from 'fluent-ffmpeg';
 
-const qualities = [480, 720, 1080, 2160] as const;
-type Quality = (typeof qualities)[number];
 interface MediaJobData {
   mediaId: string;
 }
-
-export type Metadata = {
-  resolution: string;
-  codec: string;
-  colorFormat: string;
-  bitrateMbps: number;
-  height: string;
-  width: string;
-  sizeBytes: number;
-  aspectRatio: string;
-  originalQuality: Quality;
-};
-
-export type hslPreset = {
-  resolution: string;
-  videoBitrate: string;
-  maxBitrate: string;
-  bufSize: string;
-  audioBitrate: string;
-};
-
-export const HLS_QUALITY_PRESETS = {
-  2160: {
-    resolution: '3840x2160',
-    videoBitrate: '14000k',
-    maxBitrate: '15000k',
-    bufSize: '21000k',
-    audioBitrate: '320k',
-  },
-  1080: {
-    resolution: '1920x1080',
-    videoBitrate: '5000k',
-    maxBitrate: '5350k',
-    bufSize: '7500k',
-    audioBitrate: '192k',
-  },
-  720: {
-    resolution: '1280x720',
-    videoBitrate: '2800k',
-    maxBitrate: '3000k',
-    bufSize: '4200k',
-    audioBitrate: '128k',
-  },
-  480: {
-    resolution: '854x480',
-    videoBitrate: '1400k',
-    maxBitrate: '1500k',
-    bufSize: '2100k',
-    audioBitrate: '128k',
-  },
-} as const;
-
-export type QualityPresetKey = keyof typeof HLS_QUALITY_PRESETS;
 
 const tempInputPath = (baseDir: string, type: string) =>
   path.join(`${baseDir}/`, `input-${Date.now()}.${type}`);
@@ -181,7 +135,7 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
     if (!response.Body) {
       await db
         .update(schema.media)
-        .set({ status: schema.mediaStatus.FAILED })
+        .set({ status: mediaStatus.FAILED })
         .where(eq(schema.media.id, job.data.mediaId));
       throw new Error('no s3 file found');
     }
@@ -222,7 +176,7 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
     await db
       .update(schema.media)
       .set({
-        status: schema.mediaStatus.PROCESSING,
+        status: mediaStatus.PROCESSING,
       })
       .where(eq(schema.media.id, job.data.mediaId))
       .catch((e) => {
@@ -246,9 +200,9 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
 
     const missingVideoQualities = renditions.filter(
       (rendition) =>
-        rendition.renditionStatus === schema.renditionsStatus.PROCESSING ||
-        rendition.renditionStatus === schema.renditionsStatus.PENDING ||
-        rendition.renditionStatus === schema.renditionsStatus.FAILED,
+        rendition.renditionStatus === renditionStatus.PROCESSING ||
+        rendition.renditionStatus === renditionStatus.PENDING ||
+        rendition.renditionStatus === renditionStatus.FAILED,
     );
 
     let anyFailed = false;
@@ -262,7 +216,7 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
       const currOutputDir = createOutputDir(baseDir, quality);
       await ensureDir(currOutputDir);
 
-      await updateRenditionStatus(db, schema.renditionsStatus.PROCESSING, rendition.id);
+      await updateRenditionStatus(db, renditionStatus.PROCESSING, rendition.id);
       await new Promise((resolve, reject) => {
         ffmpeg(inputPath)
           .on('start', () => {
@@ -276,15 +230,14 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
           .videoCodec('libx264')
           .audioCodec('aac')
           .size(config.resolution)
-          .videoBitrate(config.videoBitrate)
-          .audioBitrate(config.audioBitrate)
+          .audioBitrate(`${config.audioBitrate}k`)
           .outputOptions([
             '-preset ultrafast',
             '-profile:v high',
             '-ac 2',
             '-crf 23',
-            `-maxrate ${config.maxBitrate}`,
-            `-bufsize ${config.bufSize}`,
+            `-maxrate ${config.maxBitrate}k`,
+            `-bufsize ${config.bufSize}k`,
 
             '-force_key_frames expr:gte(t,n_forced*6)',
             '-sc_threshold 0',
@@ -298,7 +251,7 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
           .run();
       }).catch(async () => {
         console.log('[ERROR] FFMPEG Failed processging video');
-        await updateRenditionStatus(db, schema.renditionsStatus.FAILED, rendition.id);
+        await updateRenditionStatus(db, renditionStatus.FAILED, rendition.id);
         failed = true;
         anyFailed = true;
       });
@@ -339,7 +292,7 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
         console.log(`[UPLOAD]: ${s3Key}`);
       }
 
-      await updateRenditionStatus(db, schema.renditionsStatus.READY, rendition.id);
+      await updateRenditionStatus(db, renditionStatus.READY, rendition.id);
     }
 
     if (anyFailed) {
@@ -348,7 +301,7 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
 
     await db
       .update(schema.media)
-      .set({ status: schema.mediaStatus.READY })
+      .set({ status: mediaStatus.READY })
       .where(eq(schema.media.id, media.id));
   } finally {
     await cleanUp(baseDir);
@@ -357,7 +310,7 @@ const processMedia = (db: Db, s3: S3Client) => async (job: Job<MediaJobData>) =>
   return { success: true };
 };
 
-async function updateRenditionStatus(db: Db, status: schema.RenditionStatus, qualityId: string) {
+async function updateRenditionStatus(db: Db, status: RenditionStatus, qualityId: string) {
   await db
     .update(schema.renditions)
     .set({

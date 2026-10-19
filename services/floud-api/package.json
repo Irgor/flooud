@@ -19,6 +19,7 @@
     "@fastify/static": "^10.1.3",
     "@floud/db": "*",
     "@floud/s3": "*",
+    "@floud/types": "*",
     "bullmq": "^6.3.8",
     "fastify": "^5.12.3",
     "fastify-plugin": "^6.0.0",

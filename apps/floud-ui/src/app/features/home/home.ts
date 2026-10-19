@@ -1,12 +1,11 @@
 import { Component, computed, inject, type OnDestroy, signal } from '@angular/core';
-import { PlotlyModule } from 'angular-plotly.js';
 import { ButtonModule } from 'primeng/button';
 import { FileUploadModule } from 'primeng/fileupload';
 import { FilesService } from '../../core/services/files.service';
 
 @Component({
   selector: 'app-home',
-  imports: [ButtonModule, FileUploadModule, PlotlyModule],
+  imports: [ButtonModule, FileUploadModule],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })

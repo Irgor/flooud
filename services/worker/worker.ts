@@ -1,9 +1,10 @@
 import { createDb, schema } from '@floud/db';
 import { createS3 } from '@floud/s3';
+import { mediaStatus, renditionStatus } from '@floud/types';
 import { Worker } from 'bullmq';
+import { eq, inArray } from 'drizzle-orm';
 import { Redis } from 'ioredis';
 import { processMedia } from './src/media.ts';
-import { eq, inArray } from 'drizzle-orm';
 
 const connection = new Redis({
   host: process.env.REDIS_HOST,
@@ -42,33 +43,33 @@ mediaWorker.on('failed', async (job, err) => {
       }
 
       const failedRenditions = media.renditions
-        .filter((rendition) => rendition.renditionStatus !== schema.renditionsStatus.READY)
+        .filter((rendition) => rendition.renditionStatus !== renditionStatus.READY)
         .map((rendition) => rendition.id);
 
       if (failedRenditions.length) {
         await db
           .update(schema.renditions)
           .set({
-            renditionStatus: schema.renditionsStatus.FAILED,
+            renditionStatus: renditionStatus.FAILED,
           })
           .where(inArray(schema.renditions.id, failedRenditions));
       }
 
       const isMeadiaReady = media.renditions.some(
-        (rendition) => rendition.renditionStatus === schema.renditionsStatus.READY,
+        (rendition) => rendition.renditionStatus === renditionStatus.READY,
       );
       if (isMeadiaReady) {
         await db
           .update(schema.media)
           .set({
-            status: schema.mediaStatus.READY,
+            status: mediaStatus.READY,
           })
           .where(eq(schema.media.id, media.id));
       } else {
         await db
           .update(schema.media)
           .set({
-            status: schema.mediaStatus.FAILED,
+            status: mediaStatus.FAILED,
           })
           .where(eq(schema.media.id, media.id));
       }
