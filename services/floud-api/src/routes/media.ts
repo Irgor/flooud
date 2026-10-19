@@ -85,6 +85,7 @@ export default async function mediaRoutes(fastify: FastifyInstance) {
       with: {
         renditions: true,
       },
+      orderBy: schema.media.createdAt,
     });
 
     const playable = (renditions: schema.Rendition[]): boolean => {

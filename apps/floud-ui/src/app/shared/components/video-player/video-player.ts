@@ -6,6 +6,7 @@ import {
   inject,
   input,
   viewChild,
+  ChangeDetectionStrategy,
 } from '@angular/core';
 import Hls from 'hls.js';
 import { FilesService } from '../../../core/services/files.service';
@@ -15,6 +16,7 @@ import type { Media } from '@floud/types';
   selector: 'fl-video-player',
   imports: [],
   templateUrl: './video-player.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './video-player.scss',
 })
 export class VideoPlayer {

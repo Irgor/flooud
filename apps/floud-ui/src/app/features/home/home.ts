@@ -1,10 +1,18 @@
-import { Component, computed, inject, type OnDestroy, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  type OnDestroy,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { FilesService } from '../../core/services/files.service';
 
 @Component({
   selector: 'app-home',
   imports: [],
   templateUrl: './home.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './home.scss',
 })
 export class Home implements OnDestroy {

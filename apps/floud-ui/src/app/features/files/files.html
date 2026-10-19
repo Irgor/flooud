@@ -23,7 +23,12 @@
 
   @if (fileType() == 'file') {
     <div class="preview-box">
-      <a [href]="mediaUrl()" target="_blank" [download]="selectedMedia()?.originalName">Download</a>
+      <a
+        [href]="mediaUrl()"
+        target="_blank"
+        [download]="$safeNavigationMigration(selectedMedia()?.originalName)"
+        >Download</a
+      >
     </div>
   }
 }
