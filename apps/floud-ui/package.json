@@ -21,10 +21,8 @@
     "@angular/router": "^21.2.0",
     "@angular/ssr": "^21.2.22",
     "@floud/types": "*",
-    "@primeuix/themes": "^3.0.0",
     "express": "^5.1.0",
     "hls.js": "^1.7.3",
-    "primeng": "^21.1.9",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

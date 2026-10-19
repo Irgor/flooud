@@ -1,11 +1,9 @@
 import { Component, computed, inject, type OnDestroy, signal } from '@angular/core';
-import { ButtonModule } from 'primeng/button';
-import { FileUploadModule } from 'primeng/fileupload';
 import { FilesService } from '../../core/services/files.service';
 
 @Component({
   selector: 'app-home',
-  imports: [ButtonModule, FileUploadModule],
+  imports: [],
   templateUrl: './home.html',
   styleUrl: './home.scss',
 })
