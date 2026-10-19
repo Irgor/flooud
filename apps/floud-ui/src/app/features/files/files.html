@@ -1,15 +1,15 @@
 <h1>Uploaded files:</h1>
 
-@for (media of files(); track media.id) {
-  <div (click)="loadMedia(media)" style="cursor: pointer; border: 1px solid red; margin: 24px 0">
+@for (media of $files(); track media.id) {
+  <div (click)="loadMedia(media)" [class]="selectedMedia()?.id === media.id ? 'selected' : 'item'">
     <p><strong>Name:</strong> {{ media.originalName }}</p>
     <p><strong>Type:</strong> {{ media.mime }}</p>
-    <p><strong>Bytes:</strong> {{ media.sizeBytes }}</p>
+    <p><strong>Status:</strong> {{ displayMediaStatus(media) }}</p>
   </div>
 }
 
 @if (selectedMedia(); as media) {
-  type: {{fileType()}}
+  type: {{ fileType() }}
   @if (fileType() == 'video') {
     <div class="preview-box">
       <fl-video-player [media]="media" />

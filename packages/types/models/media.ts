@@ -23,6 +23,7 @@ export type Media = {
   aspectRatio: string | null;
   originalQuality: number | null;
   sizeBytes: number | null;
+  playable: boolean;
   status: MediaStatus;
   createdAt: string;
 };

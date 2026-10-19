@@ -28,6 +28,10 @@ export class FilesService {
     return this.http.get<Media[]>(`${this.baseUrl}/media`);
   }
 
+  getFile(id: string): Observable<Media> {
+    return this.http.get<Media>(`${this.baseUrl}/media/${id}`);
+  }
+
   steramUrl(storageKey: string) {
     return `${this.baseUrl}/stream/${storageKey}/master.m3u8`;
   }
