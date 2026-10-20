@@ -15,7 +15,7 @@ export type Metadata = {
 export class FilesService {
   private http = inject(HttpClient);
 
-  baseUrl = 'http://localhost:3000';
+  baseUrl = window.location.origin + "/api";
 
   uploadFile(file: File): Observable<{ filename: string }> {
     const formData = new FormData();

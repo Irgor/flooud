@@ -32,7 +32,7 @@ export class Files {
 
   selectedMedia = signal<Media | null>(null);
   mediaUrl = computed(() => {
-    return `http://localhost:3000/view/${this.selectedMedia()?.id}`;
+    return `${window.location.origin}/view/${this.selectedMedia()?.id}`;
   });
   fileType = computed(() => {
     const mime = this.selectedMedia()?.mime;

@@ -20,7 +20,7 @@ fastify.register(s3);
 fastify.register(redis);
 
 //routes
-fastify.register(mediaRoutes);
+fastify.register(mediaRoutes, { prefix: '/api' });
 
 fastify.get('/health', async () => {
   return { status: 'healthy' };

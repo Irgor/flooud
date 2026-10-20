@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
-import * as schema from './src/schema.ts';
+import * as schema from './src/schema/index.ts';
 
 const createDb = () => {
   const sql = postgres(process.env.DATABASE_URL!);

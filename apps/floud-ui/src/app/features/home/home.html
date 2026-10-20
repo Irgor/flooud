@@ -9,7 +9,7 @@
     (change)="onFileSelected($event)"
     aria-describedby="file-error"
     [attr.aria-invalid]="fileInvalid()"
-    class="text-ink rounded-control border border-ink0muted px-3 py-2 focus-visible:outline-2 focus-visible:outline-primary aria-invalid:border-danger"
+    class="text-ink rounded-control border border-ink-muted px-3 py-2 focus-visible:outline-2 focus-visible:outline-primary aria-invalid:border-danger"
   />
   @if (fileInvalid()) {
     <p id="file-error" class="text-sm text-danger">Selected file is invalid</p>
@@ -19,12 +19,7 @@
     @if (fileType() == 'video') {
       <div class="preview-box">
         <!-- biome-ignore lint/a11y/useMediaCaption: <explanation no caption for media uploaded from user> -->
-        <video
-          controls
-          [src]="filePreview()"
-          alt="Uploaded Preview"
-          style="width: 600px; margin: 15px 0"
-        ></video>
+        <video controls [src]="filePreview()" style="width: 600px; margin: 15px 0"></video>
       </div>
     }
     @if (fileType() == 'image') {
