@@ -1,12 +1,19 @@
 import { media, type Media, type NewMedia, pgEnumMediaStatus } from './media.ts';
-import { mediaRelations, renditionRelations } from './relations.ts';
+import { mediaRelations, renditionRelations, sessionRelations } from './relations.ts';
 import {
   pgEnumRenditionStatus,
   renditions,
   type Rendition,
   type NewRendition,
 } from './renditions.ts';
-import { users, type User, type NewUser } from './users.ts';
+import {
+  users,
+  type User,
+  type NewUser,
+  sessions,
+  type NewSession,
+  type Session,
+} from './users.ts';
 
 export {
   media,
@@ -22,4 +29,8 @@ export {
   users,
   type User,
   type NewUser,
+  sessions,
+  type NewSession,
+  type Session,
+  sessionRelations,
 };

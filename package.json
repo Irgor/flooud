@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "start": "npm run compose && npm run ui",
-    "compose": "cd infra; docker compose -f docker-compose.dev.yaml up --build -d",
+    "compose": "cd infra; docker compose -f docker-compose.dev.yaml up -d --build --renew-anon-volumes",
     "ui": "npm run start -w floud-ui",
     "lint": "biome check . && npm run format -w floud-ui",
     "lint:fix": "biome check --write ."

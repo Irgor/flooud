@@ -14,12 +14,15 @@
     "lint:fix": "biome check --write ."
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.3",
     "@fastify/cors": "^11.3.0",
     "@fastify/multipart": "^10.1.1",
     "@fastify/static": "^10.1.3",
+    "@fastify/type-provider-typebox": "^6.3.0",
     "@floud/db": "*",
     "@floud/s3": "*",
     "@floud/types": "*",
+    "@node-rs/argon2": "^2.2.2",
     "bullmq": "^6.3.8",
     "fastify": "^5.12.3",
     "fastify-plugin": "^6.0.0",

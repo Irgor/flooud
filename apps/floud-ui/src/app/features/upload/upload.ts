@@ -7,17 +7,15 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { FilesService } from '../../core/services/files.service';
-import fa from '@angular/common/locales/fa';
-import fi from '@angular/common/locales/fi';
 
 @Component({
-  selector: 'app-home',
+  selector: 'app-upload',
   imports: [],
-  templateUrl: './home.html',
+  templateUrl: './upload.html',
   changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrl: './home.scss',
+  styleUrl: './upload.scss',
 })
-export class Home implements OnDestroy {
+export class upload implements OnDestroy {
   private fileService = inject(FilesService);
 
   selectedFile = signal<File | null>(null);

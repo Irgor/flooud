@@ -31,9 +31,7 @@ export class Files {
   );
 
   selectedMedia = signal<Media | null>(null);
-  mediaUrl = computed(() => {
-    return `${window.location.origin}/view/${this.selectedMedia()?.id}`;
-  });
+
   fileType = computed(() => {
     const mime = this.selectedMedia()?.mime;
     const types = ['image', 'video'];
@@ -62,5 +60,9 @@ export class Files {
     }
 
     return media.status.substring(0, 1).toUpperCase() + media.status.substring(1);
+  }
+
+  viewUrl(id: string) {
+    return `${window.location.origin}/api/view/${id}`;
   }
 }

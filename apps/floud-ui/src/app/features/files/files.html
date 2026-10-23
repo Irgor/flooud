@@ -17,14 +17,18 @@
   }
   @if (fileType() == 'image') {
     <div class="preview-box">
-      <img [src]="mediaUrl()" alt="Selected Media" style="max-width: 600px; margin: 15px 0" />
+      <img
+        [src]="viewUrl(media.id)"
+        alt="Selected Media"
+        style="max-width: 600px; margin: 15px 0"
+      />
     </div>
   }
 
   @if (fileType() == 'file') {
     <div class="preview-box">
       <a
-        [href]="mediaUrl()"
+        [href]="viewUrl(media.id)"
         target="_blank"
         [download]="$safeNavigationMigration(selectedMedia()?.originalName)"
         >Download</a
