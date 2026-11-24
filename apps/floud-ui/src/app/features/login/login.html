@@ -1,10 +1,12 @@
-<div class="flex h-screen items-center justify-center">
-  <div class="rounded-control border border-ink-muted w-max px-12 py-8 m-auto flex flex-col">
+<div class="flex h-screen items-center justify-center bg-surface">
+  <div class="rounded-panel p-10 flex flex-col glass w-2/8">
     <form [formRoot]="loginForm">
-      <div class="control flex flex-col">
-        <label for="email">Email:</label>
+      <p class="text-ink text-heading">Welcome back</p>
+      <p class="text-muted text-sub-title">Log in to pick up where you left off.</p>
+      <div class="control flex flex-col mt-6 mb-4">
+        <label for="email" class="text-ink text-body-strong">Email:</label>
         <input
-          class="control border boreder-ink rounded-control p-2 px-4"
+          class="border border-[0.91px] border-muted text-ink rounded-control h-[48px] px-[18px] mt-2"
           id="email"
           type="email"
           placeholder="your@mail.com"
@@ -16,9 +18,9 @@
       </div>
 
       <div class="control flex flex-col">
-        <label for="password">Password:</label>
+        <label for="password" class="text-ink text-body-strong">Password:</label>
         <input
-          class="control border boreder-ink rounded-control p-2 px-4"
+          class="border border-[0.91px] border-muted text-ink rounded-control h-[48px] px-[18px] mt-2"
           id="password"
           type="password"
           placeholder="********"
@@ -29,12 +31,16 @@
         }
       </div>
 
+      <p class="my-6 text-end text-secondary text-cta-strong cursor-pointer hover:underline">
+        Forgot password?
+      </p>
+
       <button
         type="submit"
         [disabled]="loginForm().pending() || loginForm().invalid()"
-        class="my-4 w-3xs rounded-control bg-primary px-4 py-2 text-ink cursor-pointer hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50"
+        class="w-full rounded-control h-[49px] text-sub-title-strong bg-primary shadow-cta"
       >
-        Login
+        Log in
       </button>
     </form>
   </div>

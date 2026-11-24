@@ -1,12 +1,64 @@
 @import 'tailwindcss';
-/* pallet #272a29 | #f6f4f4 | #4769ff| #0dfdc9 | #33f5ff */
+
 @theme {
   --color-primary: #33F5FF;
   --color-primary-hover: #00E2FF;
   --color-secondary: #4769FF;
-  --color-surface: #f6f4f4;
-  --color-ink: #272a29;
-  --color-ink-muted: #454A48; 
-  --color-danger: #dc2626;
-  --radius-control: 0.6rem;
+  --color-surface: #F6F4F4;
+  --color-ink: #272A29;
+  --color-muted: #5A605D; 
+  --color-link: #3550E6;
+  --color-danger: #B91C1C;
+
+  --radius-panel: 36px;
+  --radius-dialog: 32px;
+  --radius-header: 30px;
+  --radius-menu: 28px;
+  --radius-control: 24px;
+  --radius-card: 16px;
+
+  --text-heading: 32px;
+  --text-heading--font-weight: 700;
+
+  --text-sub-heading: 28px;
+  --text-sub-heading--font-weight: 700;
+  
+  --text-title: 22px;
+  --text-tiitle--font-weight: 700;
+  
+
+  --text-sub-title: 16px;
+  --text-sub-title-strong: 16px;
+  --text-sub-title-strong--font-weight: 700;
+
+  --text-cta: 15px;
+  --text-cta-strong: 15px;
+  --text-cta-strong--font-weight: 700;
+  
+
+  --text-body: 14px;
+  --text-body--font-weight: 400;
+  
+  --text-body-strong: 14px;
+  --text-body-strong--font-weight: 700;
+
+
+  --text-info: 13px;
+  --text-info--font-weight: 600;
+}
+
+@utility glass {
+  background-color: rgba(255, 255, 255, 0.5);
+  background-image: linear-gradient(135deg, rgba(255,255,255,.75) 0%, rgba(255,255,255,.2) 50%, rgba(255,255,255,.45) 100%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 0 0 1px rgba(255,255,255,.55), 0 18px 40px -22px rgba(39,42,41,.32);
+}
+
+@utility shadow-cta {
+  box-shadow: 0 10px 22px -10px rgba(0, 190, 205, 0.85);
+
+  &:where(.dark, .dark *) {
+    box-shadow: 0 10px 30px -8px rgba(51, 245, 255, 0.55);
+  }
 }

@@ -1,38 +1,51 @@
-<h1>Uploaded files:</h1>
-
-@for (media of $files(); track media.id) {
-  <div (click)="loadMedia(media)" [class]="selectedMedia()?.id === media.id ? 'selected' : 'item'">
-    <p><strong>Name:</strong> {{ media.originalName }}</p>
-    <p><strong>Type:</strong> {{ media.mime }}</p>
-    <p><strong>Status:</strong> {{ displayMediaStatus(media) }}</p>
+<div class="px-8 py-4">
+  <div class="flex flex-row w-full justify-between">
+    <h1>Uploaded files:</h1>
+    <button class="rounded-control border px-1.5 py-1 bg-primary" (click)="files.reload()">
+      refresh
+    </button>
   </div>
-}
 
-@if (selectedMedia(); as media) {
-  type: {{ fileType() }}
-  @if (fileType() == 'video') {
-    <div class="preview-box">
-      <fl-video-player [media]="media" />
-    </div>
-  }
-  @if (fileType() == 'image') {
-    <div class="preview-box">
-      <img
-        [src]="viewUrl(media.id)"
-        alt="Selected Media"
-        style="max-width: 600px; margin: 15px 0"
-      />
-    </div>
-  }
-
-  @if (fileType() == 'file') {
-    <div class="preview-box">
-      <a
-        [href]="viewUrl(media.id)"
-        target="_blank"
-        [download]="$safeNavigationMigration(selectedMedia()?.originalName)"
-        >Download</a
+  @if (files.hasValue()) {
+    @for (media of files.value(); track media.id) {
+      <div
+        (click)="loadMedia(media)"
+        class="rounded-control border border-ink bg-surface p-4 my-4"
+        [class]="selectedMedia()?.id === media.id ? 'selected' : ''"
       >
-    </div>
+        <p><strong>Name:</strong> {{ media.originalName }}</p>
+        <p><strong>Type:</strong> {{ media.mime }}</p>
+        <p><strong>Status:</strong> {{ displayMediaStatus(media) }}</p>
+      </div>
+    }
+
+    @if (selectedMedia(); as media) {
+      type: {{ fileType() }}
+      @if (fileType() == 'video') {
+        <div class="preview-box">
+          <fl-video-player [media]="media" />
+        </div>
+      }
+      @if (fileType() == 'image') {
+        <div class="preview-box">
+          <img
+            [src]="viewUrl(media.id)"
+            alt="Selected Media"
+            style="max-width: 600px; margin: 15px 0"
+          />
+        </div>
+      }
+
+      @if (fileType() == 'file') {
+        <div class="preview-box">
+          <a
+            [href]="viewUrl(media.id)"
+            target="_blank"
+            [download]="$safeNavigationMigration(selectedMedia()?.originalName)"
+            >Download</a
+          >
+        </div>
+      }
+    }
   }
-}
+</div>

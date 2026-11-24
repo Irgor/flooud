@@ -29,6 +29,10 @@ export class AuthService {
       )
   }
 
+  clearSession() {
+    this.user.set(null);
+  }
+
   signUp(email: string, password: string): Observable<any> {
     return this.http
       .post(`${this.baseUrl}/signup`, { email, password })

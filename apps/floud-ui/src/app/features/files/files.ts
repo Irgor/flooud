@@ -1,9 +1,10 @@
-import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy, effect } from '@angular/core';
 import { FilesService } from '../../core/services/files.service';
 import { VideoPlayer } from '../../shared/components/video-player/video-player';
 import { mediaStatus, type Media } from '@floud/types';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { exhaustMap, interval, startWith, takeWhile } from 'rxjs';
+import { httpResource } from '@angular/common/http';
 
 @Component({
   selector: 'app-files',
@@ -15,20 +16,7 @@ import { exhaustMap, interval, startWith, takeWhile } from 'rxjs';
 export class Files {
   private fileService = inject(FilesService);
 
-  $files = toSignal(
-    interval(1000).pipe(
-      startWith(0),
-      exhaustMap((_) => this.fileService.getFiles()),
-      takeWhile(
-        (medias) =>
-          medias.some(
-            (media) =>
-              media.status == mediaStatus.PROCESSING || media.status == mediaStatus.UPLOADING,
-          ),
-        true,
-      ),
-    ),
-  );
+  files = httpResource<Media[]>(() => '/api/media', { defaultValue: [] });
 
   selectedMedia = signal<Media | null>(null);
 
@@ -48,6 +36,17 @@ export class Files {
     return 'file';
   });
 
+  constructor() {
+    effect((onCleanup) => {
+      if(!this.files.hasValue()) return;
+
+      if(!this.files.value().some(m => m.status == mediaStatus.PROCESSING || m.status == mediaStatus.UPLOADING,)) return;
+
+      const t = setTimeout(() => this.files.reload(), 1000);
+      onCleanup(() => clearTimeout(t));
+    })
+  }
+
   loadMedia(media: Media): void {
     if (media.status === mediaStatus.READY || media.playable) {
       this.selectedMedia.set(media);
@@ -64,5 +63,9 @@ export class Files {
 
   viewUrl(id: string) {
     return `${window.location.origin}/api/view/${id}`;
+  }
+
+  relaod() {
+
   }
 }

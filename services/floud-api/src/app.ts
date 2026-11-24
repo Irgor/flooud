@@ -9,6 +9,7 @@ import redis from './plugins/redis.ts';
 import s3 from './plugins/s3.ts';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import cookies from './plugins/cookies.ts';
+import auth from './plugins/auth.ts';
 
 const fastify = Fastify({
   logger: true,
@@ -22,12 +23,13 @@ fastify.register(db);
 fastify.register(s3);
 fastify.register(redis);
 fastify.register(cookies);
+fastify.register(auth);
 
 //routes
 fastify.register(mediaRoutes, { prefix: '/api' });
 fastify.register(authRoutes, { prefix: '/api/auth' });
 
-fastify.get('/health', async () => {
+fastify.get('/health', { config: { public: true } }, async () => {
   return { status: 'healthy' };
 });
 
